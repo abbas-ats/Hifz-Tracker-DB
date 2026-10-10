@@ -27,12 +27,30 @@ details{margin-bottom:8px}summary{padding:10px;background:var(--card);border:1px
 .msg{margin-bottom:10px}.msg b{font-size:14px}.msg.p div{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px;margin-top:2px}
 .row{display:flex;gap:8px}.chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}
 .chip{white-space:nowrap;background:var(--n);color:var(--tx);border-radius:20px;padding:6px 12px}.chip.on{background:var(--pr);color:#fff}
-</style></head><body><div id="app"></div>
+</style>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head><body><div id="app"></div>
 <script>
+// TODO: Replace the object below with your own Firebase project configuration credentials
+const firebaseConfig = {
+  apiKey: "AIzaSyDRNaNowelyLtpmf8xwbSpAHKsj3h3-ZlM",
+  authDomain: "hifz-tracker-db.firebaseapp.com",
+  projectId: "hifz-tracker-db",
+  storageBucket: "hifz-tracker-db.firebasestorage.app",
+  messagingSenderId: "620272626965",
+  appId: "1:620272626965:web:b1a4761b1eb8361917cd1c",
+  measurementId: "G-PVXLVMD6SK"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const T=604,JUZ=[1,22,42,62,82,102,122,142,162,182,202,222,242,262,282,302,322,342,362,382,402,422,442,462,482,502,522,542,562,582];
 const today=()=>new Date().toISOString().slice(0,10),days=d=>(Date.now()-Date.parse(d))/864e5;
-let db,meId,me,viewUid,tab='tk',room=null,sel=new Set(),unsub=null,cache={};
+let meId,me,viewUid,tab='tk',room=null,sel=new Set(),unsub=null,cache={};
 const app=()=>$('#app');
 const sha=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(x=>x.toString(16).padStart(2,'0')).join('');
 const getU=async id=>{if(!cache[id]){const s=await db.doc('users/'+id).get();cache[id]=s.exists?s.data():{name:id,color:'#888'}}return cache[id]};
@@ -42,8 +60,6 @@ const ranges=a=>{a=[...a].sort((x,y)=>x-y);let o=[],i=0;while(i<a.length){let j=
 const store={get(){try{return localStorage.getItem('hifz_me')}catch(e){return null}},set(v){try{v?localStorage.setItem('hifz_me',v):localStorage.removeItem('hifz_me')}catch(e){}}};
 
 async function init(){
-  try{const c=await claude.use('db');db=c}catch(e){db=null}
-  if(!db){app().innerHTML='<div class="main"><h2>Hifz Tracker</h2><p>Please open this page while signed in to Claude.</p></div>';return}
   const id=store.get();if(id){const s=await db.doc('users/'+id).get();if(s.exists){meId=id;me=s.data();return home()}}
   auth();
 }
@@ -124,7 +140,7 @@ async function chat(){
   $('#sd').onclick=send;$('#tx').onkeydown=e=>{if(e.key=='Enter')send()};
   if(unsub)unsub();
   unsub=db.collection(`rooms/${rid(meId,room)}/msgs`).orderBy('t','asc').limit(200).onSnapshot(async s=>{
-    const ds=s.docs.map(d=>d.data());await Promise.all([...new Set(ds.map(d=>d.from))].map(getU));
+    const ds=s.docs.map(d=>d.data());await Promise.all([...new Set(ds.map(d.from))].map(getU));
     const el=$('#ms');if(!el)return;
     el.innerHTML=ds.map(m=>{const u=cache[m.from];const d=new Date(m.t);return`<div class="msg ${m.kind}"><b style="color:${esc(u.color)}">${esc(u.name)}</b> <span class="mu">${d.toLocaleDateString([], {month:'short',day:'numeric'})} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span><div>${m.kind=='p'?'📖 ':''}${esc(m.text)}</div></div>`}).join('')||'<p class="mu">No messages yet.</p>';
     $('#mn').scrollTop=$('#mn').scrollHeight;
